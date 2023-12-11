@@ -1,6 +1,7 @@
 import requests
 from my_base import My_base
 from datetime import date, timedelta, datetime
+import time
 
 KEY = '994214471'
 DEVID = '1862272325'
@@ -33,7 +34,12 @@ def main():
     sql = 'SELECT MAX(`TIME`) FROM electro'
     result = db.get_one_table(sql)
     print(result)
+    lastdate = result[0].date()
+    print(lastdate)
+    sql = f'DELETE FROM electro WHERE `time` >= "{lastdate:Y-m-d}"'
+    db.execute(sql)
     
+    die
     if result and result[0] is not None:
         dt = timedelta(seconds=1) + result[0]
     else:
@@ -46,18 +52,24 @@ def main():
         print(date1)
 
         tomorrow = dt + timedelta(days=2)
-        date2 = int(datetime.combine(tomorrow, datetime.min.time()).timestamp())
+        date2 = int(datetime.combine(tomorrow, datetime.min.time()).timestamp()) - 1
         print(date2)
 
-        url = f'{BASE_API}?devid={DEVID}&date1={date1}&date2={date2}&period=minute&apikey={KEY}'
-        result = loader(url)
+        retry = 3
 
-        if result:
-            export_data(result, db, 'electro')
-            print(len(result))
-        else:
-            print("Помилка завантаження даних з API")
+        while(retry):
+            url = f'{BASE_API}?devid={DEVID}&date1={date1}&date2={date2}&period=minute&apikey={KEY}'
+            result = loader(url)
 
+            if result:
+                export_data(result, db, 'electro')
+                print(len(result))
+                break
+            else:
+                print("Помилка завантаження даних з API", retry)
+                time.sleep(5)
+                retry -= 1
+        if not retry: exit()
         dt += timedelta(days=1)
         
     db.close()
