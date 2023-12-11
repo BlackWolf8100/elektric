@@ -39,7 +39,7 @@ def main():
     sql = f'DELETE FROM electro WHERE `time` >= "{lastdate:Y-m-d}"'
     db.execute(sql)
     
-    die
+    
     if result and result[0] is not None:
         dt = timedelta(seconds=1) + result[0]
     else:
