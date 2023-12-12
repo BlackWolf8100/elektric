@@ -33,15 +33,13 @@ def main():
     
     sql = 'SELECT MAX(`TIME`) FROM electro'
     result = db.get_one_table(sql)
-    print(result)
-    lastdate = result[0].date()
-    print(lastdate)
-    sql = f'DELETE FROM electro WHERE `time` >= "{lastdate:Y-m-d}"'
-    db.execute(sql)
-    
-    
-    if result and result[0] is not None:
-        dt = timedelta(seconds=1) + result[0]
+    print(result) 
+    if result[0]:
+        lastdate = result[0].date()
+        print(lastdate)
+        sql = f'DELETE FROM electro WHERE `time` >= "{lastdate:%Y-%m-%d}"'
+        db.execute(sql)
+        dt = datetime.combine(lastdate, datetime.min.time())
     else:
         dt = date0
     
@@ -51,7 +49,7 @@ def main():
         date1 = int(dt.timestamp())
         print(date1)
 
-        tomorrow = dt + timedelta(days=2)
+        tomorrow = dt + timedelta(days=1)
         date2 = int(datetime.combine(tomorrow, datetime.min.time()).timestamp()) - 1
         print(date2)
 
@@ -62,12 +60,12 @@ def main():
             result = loader(url)
 
             if result:
-                export_data(result, db, 'electro')
+                export_data(result, db, 'electro', date2)
                 print(len(result))
                 break
             else:
                 print("Помилка завантаження даних з API", retry)
-                time.sleep(5)
+                time.sleep(10)
                 retry -= 1
         if not retry: exit()
         dt += timedelta(days=1)
@@ -77,7 +75,7 @@ def main():
 def convert_unix_to_datetime(unix_time):
     return datetime.fromtimestamp(unix_time).strftime('%Y-%m-%d %H:%M:%S')
 
-def export_data(data, db, table_name):
+def export_data(data, db, table_name, date2):
     data_out = []
     for product in data:
         for k, v in product.items():
@@ -85,8 +83,14 @@ def export_data(data, db, table_name):
                 product[k] = str(v)
 
             if k == 'TIME' and isinstance(v, int):
+                if v > date2:
+                    is_date_ok = False
+                    break
+                else:
+                    is_date_ok = True
                 product[k] = convert_unix_to_datetime(v)
-        data_out.append([product['ID'], product['TIME'], product['STAT'], product['V'], product['A'], product['W'], product['rW'], product['Wh'], product['rWh'], product['PF'], product['T']])
+        if is_date_ok:
+            data_out.append([product['ID'], product['TIME'], product['STAT'], product['V'], product['A'], product['W'], product['rW'], product['Wh'], product['rWh'], product['PF'], product['T']])
 
     sql = f'INSERT INTO {table_name} VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
     db.executemany(sql, data_out)
