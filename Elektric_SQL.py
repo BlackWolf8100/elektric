@@ -85,7 +85,7 @@ def export_data(data, db, table_name, date2):
             if k == 'TIME' and isinstance(v, int):
                 if v > date2:
                     is_date_ok = False
-                    break              # приділити увагу в документації на те що їхнє API надає зайву помилку(зайву дату), помилки в коді не має помилка в API
+                    break
                 else:
                     is_date_ok = True
                 product[k] = convert_unix_to_datetime(v)
